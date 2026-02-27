@@ -31,7 +31,7 @@
     }
     public static class Program
     {
-        public static int[][] GetConditionVectors(int vectorCount, int variableCount)
+        public static int[][] GetConditionVectors(int vectorCount)
         {
             int[][] vectors = new int[vectorCount][];
             for (int i = 0; i < vectorCount; i++)
@@ -79,11 +79,9 @@
         {
             Console.Write("Vector count: ");
             string? vectorCountString = Console.ReadLine();
-            Console.Write("Variable count: ");
-            string? variableCountString = Console.ReadLine();
-            if (int.TryParse(variableCountString, out int variableCount) && int.TryParse(vectorCountString, out int vectorCount))
+            if (int.TryParse(vectorCountString, out int vectorCount))
             {
-                int[][] conditionVectors = GetConditionVectors(vectorCount, variableCount);
+                int[][] conditionVectors = GetConditionVectors(vectorCount);
                 List<int> constraintsVectors = GetConstraintsVector();
                 Console.WriteLine();
                 PrintConditionMatrix(conditionVectors);
