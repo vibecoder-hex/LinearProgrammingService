@@ -18,7 +18,7 @@
             int columns = matrix[0].Length;
             for (int i = 0; i < rows; i++)
             {
-                transposedMatrix[i] = new int[rows];
+                transposedMatrix[i] = new int[columns];
                 for (int j = 0; j < columns; j++)
                 {
                     transposedMatrix[i][j] = matrix[j][i];
@@ -27,11 +27,58 @@
             return transposedMatrix;
         }
         public int[] GetFunctionVector() => TransposedMatrix(_conditionVectors)[0];
+        public int[][] GetConditionMatrix() => TransposedMatrix(_conditionVectors)
+            .Skip(1)
+            .ToArray();
+        
+        public List<int> GetConstraintsVector() => _constraintsVectors;
         
     }
+
+    public static class DataPrinter
+    {
+        public static void PrintConditionMatrix(MatrixPreprocessor preprocessor)
+        {
+            int[][] matrix = preprocessor.GetConditionMatrix();
+            int rows = matrix.Length;
+            int columns = matrix[0].Length;
+            for (int i = 0; i < rows; i++)
+            {
+                string[] vectorComponents = new string[columns];
+                for (int j = 0; j < columns; j++)
+                {
+                    vectorComponents[j] = $"{matrix[i][j]}X{j + 1}";
+                }
+                Console.WriteLine(string.Join(" + ", vectorComponents));
+            }
+        }
+
+
+        public static void PrintConstraintsVector(MatrixPreprocessor preprocessor)
+        {
+            Console.Write("B: ");
+            preprocessor.GetConstraintsVector()
+                .ForEach(element => 
+                    Console.Write($"{element} "));
+        }
+
+
+        public static void PrintFunctionVector(MatrixPreprocessor preprocessor)
+        {
+            Console.Write("F: ");
+            int[] functionVector = preprocessor.GetFunctionVector();
+            string[] functionComponents = new string[functionVector.Length];
+            for (int i = 0; i < functionVector.Length; i++)
+            {
+                functionComponents[i] = $"{functionVector[i]}X{i + 1}";
+            }
+            Console.WriteLine(string.Join(" + ", functionComponents));
+        }
+    }
+    
     public static class Program
     {
-        public static int[][] GetConditionVectors(int vectorCount, int variableCount)
+        public static int[][] GetConditionVectors(int vectorCount)
         {
             int[][] vectors = new int[vectorCount][];
             for (int i = 0; i < vectorCount; i++)
@@ -54,46 +101,21 @@
                 .ToList();
             return constraintVector;
         }
-
-        public static void PrintConditionMatrix(int[][] conditionVectors)
-        {
-            foreach (int[] vector in conditionVectors)
-            {
-                foreach (int element in vector)
-                {
-                    Console.Write($"{element} ");
-                }
-                Console.WriteLine();
-            }
-        }
-        
-        
-
-        public static void PrintConstraintsVector(List<int> constraintsVector) => 
-            constraintsVector
-                .ForEach(element => 
-                    Console.Write($"{element} "));
         
         
         public static void Main(string[] args)
         {
             Console.Write("Vector count: ");
             string? vectorCountString = Console.ReadLine();
-            Console.Write("Variable count: ");
-            string? variableCountString = Console.ReadLine();
-            if (int.TryParse(variableCountString, out int variableCount) && int.TryParse(vectorCountString, out int vectorCount))
+            if (int.TryParse(vectorCountString, out int vectorCount))
             {
-                int[][] conditionVectors = GetConditionVectors(vectorCount, variableCount);
+                int[][] conditionVectors = GetConditionVectors(vectorCount);
                 List<int> constraintsVectors = GetConstraintsVector();
-                Console.WriteLine();
-                PrintConditionMatrix(conditionVectors);
-                Console.WriteLine();
-                PrintConstraintsVector(constraintsVectors);
-                Console.WriteLine();
                 var preprocessor = new MatrixPreprocessor(conditionVectors, constraintsVectors);
-                preprocessor.GetFunctionVector()
-                    .ToList()
-                    .ForEach(element => Console.Write($"{element} "));
+                Console.WriteLine();
+                DataPrinter.PrintFunctionVector(preprocessor);
+                DataPrinter.PrintConditionMatrix(preprocessor);
+                DataPrinter.PrintConstraintsVector(preprocessor);
             }
             else
             {
