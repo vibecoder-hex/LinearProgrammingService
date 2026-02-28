@@ -24,15 +24,16 @@
 
         private int[][] TransposedMatrix(int[][] matrix)
         {
-            if (matrix.Length == 0) return new int[][] { };
-            
-            int[][] transposedMatrix = new int[matrix.Length][];
+            if (matrix.Length == 0 || matrix[0].Length == 0) return new int[][] { };
             int rows = matrix.Length;
             int columns = matrix[0].Length;
-            for (int i = 0; i < rows; i++)
+            
+            int[][] transposedMatrix = new int[columns][];
+            
+            for (int i = 0; i < columns; i++)
             {
-                transposedMatrix[i] = new int[columns];
-                for (int j = 0; j < columns; j++)
+                transposedMatrix[i] = new int[rows];
+                for (int j = 0; j < rows; j++)
                 {
                     transposedMatrix[i][j] = matrix[j][i];
                 }
