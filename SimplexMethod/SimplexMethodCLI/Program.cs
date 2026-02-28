@@ -6,7 +6,7 @@
         Less, Greater, Equal, LessOrEqual, GreaterOrEqual
     }
 
-    public struct ContraintStructure
+    public struct ConstraintObject
     {
         public int ConstraintNumber { get; set; }
         public ConstraintType ConstraintType { get; set; }
@@ -14,12 +14,12 @@
     public class MatrixPreprocessor
     {
         private int[][] _conditionVectors;
-        private int[] _constraintsVectors;
+        private ConstraintObject[] _constraintsObjects;
 
-        public MatrixPreprocessor(int[][] conditionVectors,  int[] constraintsVectors)
+        public MatrixPreprocessor(int[][] conditionVectors,  ConstraintObject[] constraintsObjects)
         {
             _conditionVectors = conditionVectors;
-            _constraintsVectors = constraintsVectors;
+            _constraintsObjects = constraintsObjects;
         }
 
         private int[][] TransposedMatrix(int[][] matrix)
@@ -54,10 +54,11 @@
                 .ToArray();
         }
         
-        public int[] GetConstraintsVector()
+        public ConstraintObject[] GetConstraintsObject()
         {
-            if  (_constraintsVectors.Length == 0) return new int[] { };
-            return _constraintsVectors;
+            if  (_constraintsObjects.Length == 0) 
+                return new ConstraintObject[] { };
+            return _constraintsObjects;
         }
 
         public int[][] GetCanninicalMatrix()
@@ -72,7 +73,17 @@
         public static void PrintConditionMatrix(MatrixPreprocessor preprocessor)
         {
             int[][] matrix = preprocessor.GetConditionMatrix();
-            if (matrix.Length == 0) return;
+            ConstraintObject[] constraintsObjects = preprocessor.GetConstraintsObject();
+            if (matrix.Length == 0 || constraintsObjects.Length == 0) return;
+            
+            Dictionary<ConstraintType, string> constraintTypes = new Dictionary<ConstraintType, string>
+            {
+                { ConstraintType.Less, "<" },
+                { ConstraintType.Greater, ">" },
+                { ConstraintType.Equal, "=" },
+                { ConstraintType.LessOrEqual, "<=" },
+                { ConstraintType.GreaterOrEqual, ">=" }
+            };
             
             int rows = matrix.Length;
             int columns = matrix[0].Length;
@@ -83,23 +94,12 @@
                 {
                     vectorComponents[j] = $"{matrix[i][j]}X{j + 1}";
                 }
-                Console.WriteLine(string.Join(" + ", vectorComponents));
+                ConstraintType constraintType = constraintsObjects[i].ConstraintType;
+                int constraintNumber = constraintsObjects[i].ConstraintNumber;
+                Console.WriteLine(string.Join(" + ", vectorComponents) + $" {constraintTypes[constraintType]} {constraintNumber}");
             }
         }
-
-
-        public static void PrintConstraintsVector(MatrixPreprocessor preprocessor)
-        {
-            int[] constraintsVector = preprocessor.GetConstraintsVector();
-            if (constraintsVector.Length == 0) return;
-            
-            Console.Write("B: ");
-            constraintsVector
-                .ToList()
-                .ForEach(element => 
-                    Console.Write($"{element} "));
-        }
-
+        
 
         public static void PrintFunctionVector(MatrixPreprocessor preprocessor)
         {
@@ -138,19 +138,61 @@
             return vectors;
         }
 
-        public static int[] CreateConstraintsVector(int variableCount)
+        public static ConstraintObject[] CreateConstraintsObjects(int variableCount)
         {
             Console.Write("B: ");
             string[] constraintVector = Console.ReadLine()
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            
             if (constraintVector.Length != variableCount)
             {
                 Console.WriteLine("Constraint vector length is incorrect");
-                return new int[] {};
+                return new ConstraintObject[] {};
             }
-            return constraintVector
-                .Select(element => int.TryParse(element, out int constraint) ? constraint : 0)
-                .ToArray();;
+            ConstraintObject[] constraintsObjects = new ConstraintObject[constraintVector.Length];
+
+            for (int i = 0; i < constraintVector.Length; i++)
+            {
+                if (int.TryParse(constraintVector[i], out int constraint))
+                {
+                    Console.WriteLine($"Select constraint type for {constraintVector[i]}: \n 1.Less, 2.Greater, 3.Equal, 4.LessOrEqual, 5.GreaterOrEqual");
+                    ConstraintObject constraintObject = new ConstraintObject();
+                    string? selectedType = Console.ReadLine();
+                    if (int.TryParse(selectedType, out int type))
+                    {
+                        switch (type)
+                        {
+                            case 1:
+                                constraintObject.ConstraintType = ConstraintType.Less;
+                                break;
+                            case 2:
+                                constraintObject.ConstraintType = ConstraintType.Greater;
+                                break;
+                            case 3:
+                                constraintObject.ConstraintType = ConstraintType.Equal;
+                                break;
+                            case 4:
+                                constraintObject.ConstraintType = ConstraintType.LessOrEqual;
+                                break;
+                            case 5:
+                                constraintObject.ConstraintType = ConstraintType.GreaterOrEqual;
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        Console.Error.WriteLine("Invalid constraint type");
+                        return new ConstraintObject[] {};
+                    }
+                    constraintObject.ConstraintNumber = constraint;
+                    constraintsObjects[i]  = constraintObject;
+                }
+                else
+                {
+                    Console.Error.WriteLine("Invalid constraint input");
+                }
+            }
+            return constraintsObjects;
         }
         
         
@@ -163,12 +205,11 @@
             if (int.TryParse(vectorCountString, out int vectorCount) && int.TryParse(variableCountString, out int variableCount))
             {
                 int[][] conditionVectors = CreateConditionVectors(vectorCount, variableCount);
-                int[] constraintsVectors = CreateConstraintsVector(variableCount);
-                var preprocessor = new MatrixPreprocessor(conditionVectors, constraintsVectors);
+                ConstraintObject[] constraintsObjects = CreateConstraintsObjects(variableCount);
+                var preprocessor = new MatrixPreprocessor(conditionVectors, constraintsObjects);
                 Console.WriteLine();
                 EquationDataPrinter.PrintFunctionVector(preprocessor);
                 EquationDataPrinter.PrintConditionMatrix(preprocessor);
-                EquationDataPrinter.PrintConstraintsVector(preprocessor);
             }
             else
             {
