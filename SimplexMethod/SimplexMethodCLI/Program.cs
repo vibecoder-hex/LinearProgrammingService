@@ -1,11 +1,22 @@
 ﻿namespace SimplexMethodCLI
 {
+
+    public enum ConstraintType
+    {
+        Less, Greater, Equal, LessOrEqual, GreaterOrEqual
+    }
+
+    public struct ContraintStructure
+    {
+        public int ConstraintNumber { get; set; }
+        public ConstraintType ConstraintType { get; set; }
+    }
     public class MatrixPreprocessor
     {
         private int[][] _conditionVectors;
-        private List<int> _constraintsVectors;
+        private int[] _constraintsVectors;
 
-        public MatrixPreprocessor(int[][] conditionVectors,  List<int> constraintsVectors)
+        public MatrixPreprocessor(int[][] conditionVectors,  int[] constraintsVectors)
         {
             _conditionVectors = conditionVectors;
             _constraintsVectors = constraintsVectors;
@@ -13,6 +24,8 @@
 
         private int[][] TransposedMatrix(int[][] matrix)
         {
+            if (matrix.Length == 0) return new int[][] { };
+            
             int[][] transposedMatrix = new int[matrix.Length][];
             int rows = matrix.Length;
             int columns = matrix[0].Length;
@@ -26,20 +39,41 @@
             }
             return transposedMatrix;
         }
-        public int[] GetFunctionVector() => TransposedMatrix(_conditionVectors)[0];
-        public int[][] GetConditionMatrix() => TransposedMatrix(_conditionVectors)
-            .Skip(1)
-            .ToArray();
+
+        public int[] GetFunctionVector()
+        {
+            if (_conditionVectors.Length == 0) return new int[] { };
+            return _conditionVectors[0];
+        }
+
+        public int[][] GetConditionMatrix()
+        {
+            if (_conditionVectors.Length == 0) return new int[][] { };
+            return TransposedMatrix(_conditionVectors)
+                .Skip(1)
+                .ToArray();
+        }
         
-        public List<int> GetConstraintsVector() => _constraintsVectors;
+        public int[] GetConstraintsVector()
+        {
+            if  (_constraintsVectors.Length == 0) return new int[] { };
+            return _constraintsVectors;
+        }
+
+        public int[][] GetCanninicalMatrix()
+        {
+            return new int[][] { };
+        }
         
     }
 
-    public static class DataPrinter
+    public static class EquationDataPrinter
     {
         public static void PrintConditionMatrix(MatrixPreprocessor preprocessor)
         {
             int[][] matrix = preprocessor.GetConditionMatrix();
+            if (matrix.Length == 0) return;
+            
             int rows = matrix.Length;
             int columns = matrix[0].Length;
             for (int i = 0; i < rows; i++)
@@ -56,8 +90,12 @@
 
         public static void PrintConstraintsVector(MatrixPreprocessor preprocessor)
         {
+            int[] constraintsVector = preprocessor.GetConstraintsVector();
+            if (constraintsVector.Length == 0) return;
+            
             Console.Write("B: ");
-            preprocessor.GetConstraintsVector()
+            constraintsVector
+                .ToList()
                 .ForEach(element => 
                     Console.Write($"{element} "));
         }
@@ -65,8 +103,10 @@
 
         public static void PrintFunctionVector(MatrixPreprocessor preprocessor)
         {
-            Console.Write("F: ");
             int[] functionVector = preprocessor.GetFunctionVector();
+            if (functionVector.Length == 0) return;
+            
+            Console.Write("F: ");
             string[] functionComponents = new string[functionVector.Length];
             for (int i = 0; i < functionVector.Length; i++)
             {
@@ -78,13 +118,19 @@
     
     public static class Program
     {
-        public static int[][] GetConditionVectors(int vectorCount)
+        public static int[][] CreateConditionVectors(int vectorCount, int variableCount)
         {
             int[][] vectors = new int[vectorCount][];
             for (int i = 0; i < vectorCount; i++)
             {
                 Console.Write($"P{i + 1}: ");
-                vectors[i] = Console.ReadLine().Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                string[] vectorComponents = Console.ReadLine().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (vectorComponents.Length != variableCount)
+                {
+                    Console.WriteLine("vector is incorrect");
+                    return new int[][] {};
+                }
+                vectors[i] = vectorComponents  
                     .Select(element =>
                         int.TryParse(element, out int condition) ? condition : 0)
                     .ToArray();
@@ -92,14 +138,19 @@
             return vectors;
         }
 
-        public static List<int> GetConstraintsVector()
+        public static int[] CreateConstraintsVector(int variableCount)
         {
             Console.Write("B: ");
-            List<int> constraintVector = Console.ReadLine()
-                .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            string[] constraintVector = Console.ReadLine()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (constraintVector.Length != variableCount)
+            {
+                Console.WriteLine("Constraint vector length is incorrect");
+                return new int[] {};
+            }
+            return constraintVector
                 .Select(element => int.TryParse(element, out int constraint) ? constraint : 0)
-                .ToList();
-            return constraintVector;
+                .ToArray();;
         }
         
         
@@ -107,22 +158,22 @@
         {
             Console.Write("Vector count: ");
             string? vectorCountString = Console.ReadLine();
-            if (int.TryParse(vectorCountString, out int vectorCount))
+            Console.Write("Variable count: ");
+            string? variableCountString = Console.ReadLine();
+            if (int.TryParse(vectorCountString, out int vectorCount) && int.TryParse(variableCountString, out int variableCount))
             {
-                int[][] conditionVectors = GetConditionVectors(vectorCount);
-                List<int> constraintsVectors = GetConstraintsVector();
+                int[][] conditionVectors = CreateConditionVectors(vectorCount, variableCount);
+                int[] constraintsVectors = CreateConstraintsVector(variableCount);
                 var preprocessor = new MatrixPreprocessor(conditionVectors, constraintsVectors);
                 Console.WriteLine();
-                DataPrinter.PrintFunctionVector(preprocessor);
-                DataPrinter.PrintConditionMatrix(preprocessor);
-                DataPrinter.PrintConstraintsVector(preprocessor);
+                EquationDataPrinter.PrintFunctionVector(preprocessor);
+                EquationDataPrinter.PrintConditionMatrix(preprocessor);
+                EquationDataPrinter.PrintConstraintsVector(preprocessor);
             }
             else
             {
                 Console.WriteLine("Invalid input");
             }
-            
         }
     }
 }
-
