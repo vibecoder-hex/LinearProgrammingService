@@ -11,6 +11,12 @@
         public int ConstraintNumber { get; set; }
         public ConstraintType ConstraintType { get; set; }
     }
+
+    public struct SimplexTableObject
+    {
+        public double UpperBound { get; set; }
+        public double LowerBound { get; set; }
+    }
     
     
     public class MatrixPreprocessor
@@ -46,7 +52,7 @@
         public int[] GetFunctionVector()
         {
             if (_conditionVectors.Length == 0) return new int[] { };
-            return _conditionVectors[0];
+            return TransposedMatrix(_conditionVectors)[0];
         }
 
         public int[][] GetConditionMatrix()
@@ -64,38 +70,37 @@
             return _constraintsObjects;
         }
         
-        public int[][] GetCanonicalMatrix()
+        public SimplexTableObject[][] GetFirstSimplexTable(bool isMaximize = true)
         {
-            int[][] matrix = TransposedMatrix(_conditionVectors);
+            int[][] matrix = GetConditionMatrix();
+            int[] functionVector = GetFunctionVector();
+            if (matrix.Length == 0 || functionVector.Length == 0 || _constraintsObjects.Length == 0) 
+                return new SimplexTableObject[][] { };
+            
             int rows = matrix.Length;
             int columns = matrix[0].Length;
-            int[][] canonicalMatrix = new int[rows][];
+            
+            SimplexTableObject[][] simplexMatrix = new SimplexTableObject[rows + 1][];
+                
             for (int i = 0; i < rows; i++)
             {
-                canonicalMatrix[i] = new int[columns + 1];
+                simplexMatrix[i] = new SimplexTableObject[columns + 1];
                 for (int j = 0; j < columns; j++)
                 {
-                    canonicalMatrix[i][j] = matrix[i][j];
+                    simplexMatrix[i][j].UpperBound = matrix[i][j];
                 }
+                simplexMatrix[i][columns].UpperBound = _constraintsObjects[i].ConstraintNumber;
             }
-            /*
-            for (int i = 0; i < rows; i++)
+            simplexMatrix[rows] = new SimplexTableObject[columns + 1];
+            for (int i = 0; i < columns; i++)
             {
-                switch (_constraintsObjects[i].ConstraintType)
-                {
-                    case ConstraintType.Equal:
-                        canonicalMatrix[i][columns + 1] = 0;
-                        break;
-                    case ConstraintType.LessOrEqual:
-                        canonicalMatrix[i][columns + 1] = 1;
-                        break;
-                    case ConstraintType.GreaterOrEqual:
-                        canonicalMatrix[i][columns + 1] = -1;
-                        break;
-                }
+                if (isMaximize)
+                    simplexMatrix[rows][i].UpperBound = -functionVector[i];
+                else
+                    simplexMatrix[rows][i].UpperBound = functionVector[i];
+                
             }
-            */
-            return canonicalMatrix;
+            return simplexMatrix;
         }
         
     }
@@ -147,14 +152,16 @@
 
         public static void PrintCanonicalMatrix(MatrixPreprocessor preprocessor)
         {
-            int[][] matrix = preprocessor.GetCanonicalMatrix();
+            SimplexTableObject[][] matrix = preprocessor.GetFirstSimplexTable();
+            if (matrix.Length == 0) return;
+            
             int rows = matrix.Length;
             int columns = matrix[0].Length;
             for (int i = 0; i < rows; i++)
             {
                 for (int j = 0; j < columns; j++)
                 {
-                    Console.Write($"{matrix[i][j]} ");
+                    Console.Write($"{matrix[i][j].UpperBound} ");
                 }
                 Console.WriteLine();
             }
@@ -189,7 +196,7 @@
             string[] constraintVector = Console.ReadLine()
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries);
             
-            if (constraintVector.Length != variableCount)
+            if (constraintVector.Length != variableCount - 1)
             {
                 Console.WriteLine("Constraint vector length is incorrect");
                 return new ConstraintObject[] {};
@@ -237,11 +244,7 @@
         
         public static void Main(string[] args)
         {
-            Console.Write("Vector count: ");
-            string? vectorCountString = Console.ReadLine();
-            Console.Write("Variable count: ");
-            string? variableCountString = Console.ReadLine();
-            if (int.TryParse(vectorCountString, out int vectorCount) && int.TryParse(variableCountString, out int variableCount))
+            if (int.TryParse(args[0], out int vectorCount) && int.TryParse(args[1], out int variableCount))
             {
                 int[][] conditionVectors = CreateConditionVectors(vectorCount, variableCount);
                 ConstraintObject[] constraintsObjects = CreateConstraintsObjects(variableCount);
