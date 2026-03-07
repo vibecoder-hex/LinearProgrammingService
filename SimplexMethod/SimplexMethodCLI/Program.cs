@@ -2,8 +2,8 @@
 {
 
     public enum ConstraintType
-    {
-        Less, Greater, Equal, LessOrEqual, GreaterOrEqual
+    { 
+        Equal, LessOrEqual, GreaterOrEqual
     }
 
     public struct ConstraintObject
@@ -11,6 +11,8 @@
         public int ConstraintNumber { get; set; }
         public ConstraintType ConstraintType { get; set; }
     }
+    
+    
     public class MatrixPreprocessor
     {
         private int[][] _conditionVectors;
@@ -61,10 +63,39 @@
                 return new ConstraintObject[] { };
             return _constraintsObjects;
         }
-
-        public int[][] GetCanninicalMatrix()
+        
+        public int[][] GetCanonicalMatrix()
         {
-            return new int[][] { };
+            int[][] matrix = TransposedMatrix(_conditionVectors);
+            int rows = matrix.Length;
+            int columns = matrix[0].Length;
+            int[][] canonicalMatrix = new int[rows][];
+            for (int i = 0; i < rows; i++)
+            {
+                canonicalMatrix[i] = new int[columns + 1];
+                for (int j = 0; j < columns; j++)
+                {
+                    canonicalMatrix[i][j] = matrix[i][j];
+                }
+            }
+            /*
+            for (int i = 0; i < rows; i++)
+            {
+                switch (_constraintsObjects[i].ConstraintType)
+                {
+                    case ConstraintType.Equal:
+                        canonicalMatrix[i][columns + 1] = 0;
+                        break;
+                    case ConstraintType.LessOrEqual:
+                        canonicalMatrix[i][columns + 1] = 1;
+                        break;
+                    case ConstraintType.GreaterOrEqual:
+                        canonicalMatrix[i][columns + 1] = -1;
+                        break;
+                }
+            }
+            */
+            return canonicalMatrix;
         }
         
     }
@@ -79,8 +110,6 @@
             
             Dictionary<ConstraintType, string> constraintTypes = new Dictionary<ConstraintType, string>
             {
-                { ConstraintType.Less, "<" },
-                { ConstraintType.Greater, ">" },
                 { ConstraintType.Equal, "=" },
                 { ConstraintType.LessOrEqual, "<=" },
                 { ConstraintType.GreaterOrEqual, ">=" }
@@ -114,6 +143,21 @@
                 functionComponents[i] = $"{functionVector[i]}X{i + 1}";
             }
             Console.WriteLine(string.Join(" + ", functionComponents));
+        }
+
+        public static void PrintCanonicalMatrix(MatrixPreprocessor preprocessor)
+        {
+            int[][] matrix = preprocessor.GetCanonicalMatrix();
+            int rows = matrix.Length;
+            int columns = matrix[0].Length;
+            for (int i = 0; i < rows; i++)
+            {
+                for (int j = 0; j < columns; j++)
+                {
+                    Console.Write($"{matrix[i][j]} ");
+                }
+                Console.WriteLine();
+            }
         }
     }
     
@@ -156,7 +200,7 @@
             {
                 if (int.TryParse(constraintVector[i], out int constraint))
                 {
-                    Console.WriteLine($"Select constraint type for {constraintVector[i]}: \n 1.Less, 2.Greater, 3.Equal, 4.LessOrEqual, 5.GreaterOrEqual");
+                    Console.WriteLine($"Select constraint type for {constraintVector[i]}: \n 1.Equal, 2.LessOrEqual, 3.GreaterOrEqual");
                     ConstraintObject constraintObject = new ConstraintObject();
                     string? selectedType = Console.ReadLine();
                     if (int.TryParse(selectedType, out int type))
@@ -164,18 +208,12 @@
                         switch (type)
                         {
                             case 1:
-                                constraintObject.ConstraintType = ConstraintType.Less;
-                                break;
-                            case 2:
-                                constraintObject.ConstraintType = ConstraintType.Greater;
-                                break;
-                            case 3:
                                 constraintObject.ConstraintType = ConstraintType.Equal;
                                 break;
-                            case 4:
+                            case 2:
                                 constraintObject.ConstraintType = ConstraintType.LessOrEqual;
                                 break;
-                            case 5:
+                            case 3:
                                 constraintObject.ConstraintType = ConstraintType.GreaterOrEqual;
                                 break;
                         }
@@ -211,6 +249,8 @@
                 Console.WriteLine();
                 EquationDataPrinter.PrintFunctionVector(preprocessor);
                 EquationDataPrinter.PrintConditionMatrix(preprocessor);
+                Console.WriteLine();
+                EquationDataPrinter.PrintCanonicalMatrix(preprocessor);
             }
             else
             {
