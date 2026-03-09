@@ -149,9 +149,9 @@
             Console.WriteLine(string.Join(" + ", functionComponents));
         }
 
-        public static void PrintCanonicalMatrix(MatrixPreprocessor preprocessor)
+        public static void PrintSimplexTable(SimplexProcessor simplexProcessor)
         {
-            SimplexTableObject[][] matrix = preprocessor.GetFirstSimplexTable();
+            SimplexTableObject[][] matrix = simplexProcessor.GetSimplexTable();
             if (matrix.Length == 0) return;
             
             int rows = matrix.Length;
@@ -160,12 +160,89 @@
             {
                 for (int j = 0; j < columns; j++)
                 {
-                    Console.Write($"{matrix[i][j].UpperBound, 2}/{matrix[i][j].LowerBound} ");
+                    Console.Write($"{matrix[i][j].UpperBound, 2}|{matrix[i][j].LowerBound:F3} ");
                 }
                 Console.WriteLine();
             }
         }
     }
+
+    public class SimplexProcessor
+    {
+        private SimplexTableObject[][] _simplexTable;
+
+        public SimplexProcessor(SimplexTableObject[][] simplexTable)
+        {
+            _simplexTable = simplexTable;
+        }
+
+        private int GetPivotColumnIndex(int rows, int columns)
+        {
+            int pivotColumn = -1;
+            double minValue = int.MaxValue;
+
+            for (int i = 0; i < columns; i++)
+            {
+                if (_simplexTable[rows - 1][i].UpperBound < minValue)
+                {
+                    minValue = _simplexTable[rows - 1][i].UpperBound;
+                    pivotColumn = i;
+                }
+            }
+            return pivotColumn;
+        }
+
+        private int GetPivotRowIndex(int pivotColumn, int rows, int columns)
+        {
+            int pivotRow = -1;
+            double minValue = double.MaxValue;
+            
+            for (int i = 0; i < rows; i++)
+            {
+                if (_simplexTable[i][pivotColumn].UpperBound > 0)
+                {
+                    double ratio = _simplexTable[i][columns - 1].UpperBound / _simplexTable[i][pivotColumn].UpperBound;
+                    if (ratio < minValue)
+                    {
+                        minValue = ratio;
+                        pivotRow = i;
+                    }
+                }
+            }
+            return pivotRow;
+        }
+
+        private void FillPivotLowerBounds(int rows, int columns)
+        {
+            int pivotColumnIndex = GetPivotColumnIndex(rows, columns);
+            int pivotRowIndex = GetPivotRowIndex(pivotColumnIndex, rows, columns);
+
+            double midElement = _simplexTable[pivotRowIndex][pivotColumnIndex].UpperBound;
+
+            for (int i = 0; i < rows; i++)
+            {
+                double ratio = _simplexTable[i][pivotColumnIndex].UpperBound / midElement;
+                _simplexTable[i][pivotColumnIndex].LowerBound = -ratio;
+            }
+
+            for (int i = 0; i < columns; i++)
+            {
+                double ratio = _simplexTable[pivotRowIndex][i].UpperBound / midElement;
+                _simplexTable[pivotRowIndex][i].LowerBound = ratio;
+            }
+            _simplexTable[pivotRowIndex][pivotColumnIndex].LowerBound = 1 / midElement;
+        }
+
+        public void TransformationLoop()
+        {
+            int rows = _simplexTable.Length;
+            int columns = _simplexTable[0].Length;
+            FillPivotLowerBounds(rows, columns);
+        }
+
+        public SimplexTableObject[][] GetSimplexTable() => _simplexTable;
+    }
+
     
     public static class Program
     {
@@ -235,6 +312,7 @@
                 else
                 {
                     Console.Error.WriteLine("Invalid constraint input");
+                    return new ConstraintObject[] {};
                 }
             }
             return constraintsObjects;
@@ -249,11 +327,19 @@
                 int[][] conditionVectors = CreateConditionVectors(vectorCount, variableCount);
                 ConstraintObject[] constraintsObjects = CreateConstraintsObjects(variableCount);
                 var preprocessor = new MatrixPreprocessor(conditionVectors, constraintsObjects);
+                var simplexProcessor = new SimplexProcessor(preprocessor.GetFirstSimplexTable());
+
                 Console.WriteLine();
+                Console.WriteLine("Function vector:");
                 EquationDataPrinter.PrintFunctionVector(preprocessor);
+                Console.WriteLine("Condition matrix:");
                 EquationDataPrinter.PrintConditionMatrix(preprocessor);
                 Console.WriteLine();
-                EquationDataPrinter.PrintCanonicalMatrix(preprocessor);
+
+                EquationDataPrinter.PrintSimplexTable(simplexProcessor);
+                Console.WriteLine();
+                simplexProcessor.TransformationLoop();
+                EquationDataPrinter.PrintSimplexTable(simplexProcessor);
             }
             else
             {
