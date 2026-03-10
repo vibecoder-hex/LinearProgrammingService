@@ -101,7 +101,6 @@
             }
             return simplexMatrix;
         }
-        
     }
 
     public static class EquationDataPrinter
@@ -147,23 +146,6 @@
                 functionComponents[i] = $"{functionVector[i]}X{i + 1}";
             }
             Console.WriteLine(string.Join(" + ", functionComponents));
-        }
-
-        public static void PrintSimplexTable(SimplexProcessor simplexProcessor)
-        {
-            SimplexTableObject[][] matrix = simplexProcessor.GetSimplexTable();
-            if (matrix.Length == 0) return;
-            
-            int rows = matrix.Length;
-            int columns = matrix[0].Length;
-            for (int i = 0; i < rows; i++)
-            {
-                for (int j = 0; j < columns; j++)
-                {
-                    Console.Write($"{matrix[i][j].UpperBound, 2}|{matrix[i][j].LowerBound:F3} ");
-                }
-                Console.WriteLine();
-            }
         }
     }
 
@@ -221,26 +203,110 @@
 
             for (int i = 0; i < rows; i++)
             {
-                double ratio = _simplexTable[i][pivotColumnIndex].UpperBound / midElement;
+                if (i == pivotRowIndex) continue;
+                
+                double ratio = _simplexTable[i][pivotColumnIndex].UpperBound / midElement; 
                 _simplexTable[i][pivotColumnIndex].LowerBound = -ratio;
             }
 
             for (int i = 0; i < columns; i++)
             {
-                double ratio = _simplexTable[pivotRowIndex][i].UpperBound / midElement;
+                if (i == pivotColumnIndex) continue;
+                
+                double ratio = _simplexTable[pivotRowIndex][i].UpperBound / midElement; 
                 _simplexTable[pivotRowIndex][i].LowerBound = ratio;
             }
             _simplexTable[pivotRowIndex][pivotColumnIndex].LowerBound = 1 / midElement;
         }
 
-        public void TransformationLoop()
+        private void FillTable(int rows, int columns, int pivotColumnIndex, int pivotRowIndex)
         {
-            int rows = _simplexTable.Length;
-            int columns = _simplexTable[0].Length;
-            FillPivotLowerBounds(rows, columns);
+            for (int i = 0; i < rows; i++)
+            {
+                for (int j = 0; j < columns; j++)
+                {
+                    if (i != pivotColumnIndex && j != pivotRowIndex)
+                    {
+                        double pivotColumnBound = _simplexTable[i][pivotColumnIndex].LowerBound;
+                        double pivotRowBound = _simplexTable[i][pivotRowIndex].UpperBound;
+                        _simplexTable[i][j].LowerBound = pivotColumnBound * pivotRowBound;
+                    }
+                }
+            }
         }
 
-        public SimplexTableObject[][] GetSimplexTable() => _simplexTable;
+        private bool IsOptimal(int columns, int rows)
+        {
+            for (int i = 0; i < columns; i++)
+            {
+                if (_simplexTable[rows - 1][i].UpperBound < 0)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private void PivotReplacement(int columns, int pivotColumnIndex, int pivotRowIndex)
+        {
+            for (int i = 0; i < columns; i++)
+            {
+                (_simplexTable[pivotColumnIndex][i], _simplexTable[pivotRowIndex][i]) = (_simplexTable[pivotRowIndex][i], _simplexTable[pivotColumnIndex][i]);
+            }
+        }
+
+        private void RecountTable(int rows, int columns)
+        {
+            for (int i = 0; i < rows; i++)
+            {
+                for (int j = 0; j < columns; j++)
+                {
+                    _simplexTable[i][j].UpperBound = _simplexTable[i][j].LowerBound;
+                }
+            }
+        }
+        
+        public void PrintSimplexTable(int rows, int columns)
+        {
+            Console.WriteLine();
+            for (int i = 0; i < rows; i++)
+            {
+                for (int j = 0; j < columns; j++)
+                {
+                    Console.Write($"{_simplexTable[i][j].UpperBound, 2:F3}|{_simplexTable[i][j].LowerBound:F3} ");
+                }
+                Console.WriteLine();
+            }
+        }
+
+        public void TransformationLoop()
+        {
+            if (_simplexTable.Length == 0) return;
+            
+            int rows = _simplexTable.Length;
+            int columns = _simplexTable[0].Length;
+
+            while (!IsOptimal(columns, rows))
+            {
+                int pivotColumnIndex = GetPivotColumnIndex(rows, columns);
+                int pivotRowIndex = GetPivotRowIndex(pivotColumnIndex, rows, columns);
+                
+                FillPivotLowerBounds(rows, columns);
+                FillTable(rows, columns, pivotColumnIndex, pivotRowIndex);
+                PivotReplacement(columns, pivotColumnIndex, pivotRowIndex);
+                RecountTable(rows, columns);
+                PrintSimplexTable(rows, columns);
+            }
+            /*
+            Console.WriteLine(IsOptimal(columns, rows));
+            Console.WriteLine(pivotColumnIndex);
+            Console.WriteLine(pivotRowIndex);
+            FillPivotLowerBounds(rows, columns);
+            FillTable(rows, columns, pivotColumnIndex, pivotRowIndex);
+            PivotReplacement(columns, pivotColumnIndex, pivotRowIndex);
+            RecountTable(rows, columns);
+            */
+        }
     }
 
     
@@ -335,11 +401,8 @@
                 Console.WriteLine("Condition matrix:");
                 EquationDataPrinter.PrintConditionMatrix(preprocessor);
                 Console.WriteLine();
-
-                EquationDataPrinter.PrintSimplexTable(simplexProcessor);
-                Console.WriteLine();
+                
                 simplexProcessor.TransformationLoop();
-                EquationDataPrinter.PrintSimplexTable(simplexProcessor);
             }
             else
             {
@@ -348,3 +411,21 @@
         }
     }
 }
+
+/*
+5 2 1 2
+6 1 5 2
+8 3 2 4
+4 1 4 1
+20 80 50
+2
+2
+2
+*/
+
+/*
+2|0,000  2|0,000  4|-1,333  1|0,000 50|0,000 
+1|0,000  5|-0,667  2|-0,667  4|-0,667 80|-0,667 
+2|0,667  1|0,667  3|0,667  1|1,333 20|1,333 
+-5|0,000 -6|-13,333 -8|-13,333 -4|66,667  0|66,667 
+*/   
