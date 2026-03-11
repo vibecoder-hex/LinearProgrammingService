@@ -1,7 +1,7 @@
 # Linear Programming Service.
 Simplex method solving program
 
-
+```
 > ./SimplexMethod 3 3
 P1: 1 2 3
 P2: 4 5 6
@@ -30,3 +30,4 @@ Condition matrix:
 0,250|0,000 0,250|0,000 0,250|0,000 0,500|0,000 
 
 F = 0,500
+```
