@@ -1,6 +1,15 @@
 # Linear Programming Service.
 Simplex method solving program
 
+#Features
+
+1. Constructing equatations and target functions from coeffecients and constrants vectors
+2. Building simplex table with uppers and lower bounds
+3. Table transformation and found optimal solution
+
+#TechStack
+1.C#(.NET 10.0)
+2. Spectre.Console(for pretty data prining)
 ```
 > ./SimplexMethod 3 3
 P1: 1 2 3
