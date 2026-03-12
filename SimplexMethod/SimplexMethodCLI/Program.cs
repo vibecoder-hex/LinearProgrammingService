@@ -8,7 +8,7 @@
 
     public struct ConstraintObject
     {
-        public int ConstraintNumber { get; set; }
+        public double ConstraintNumber { get; set; }
         public ConstraintType ConstraintType { get; set; }
     }
 
@@ -21,26 +21,57 @@
     
     public class MatrixPreprocessor
     {
-        private int[][] _conditionVectors;
-        private ConstraintObject[] _constraintsObjects;
+        private readonly double[][] _conditionVectors;
+        private readonly ConstraintObject[] _constraintsObjects;
+        private readonly int _normalizationScale;
 
-        public MatrixPreprocessor(int[][] conditionVectors,  ConstraintObject[] constraintsObjects)
+        public MatrixPreprocessor(double[][] conditionVectors,  ConstraintObject[] constraintsObjects, int normalizationScale)
         {
             _conditionVectors = conditionVectors;
             _constraintsObjects = constraintsObjects;
+            _normalizationScale = normalizationScale;
+            NormalizedConditions(_conditionVectors);
+            NormalizedConstraints(_constraintsObjects);
         }
 
-        private int[][] TransposedMatrix(int[][] matrix)
+        private void NormalizedConditions(double[][] conditionVectors)
         {
-            if (matrix.Length == 0 || matrix[0].Length == 0) return new int[][] { };
+            if (conditionVectors.Length == 0 || conditionVectors[0].Length == 0)
+                return;
+
+            int rows = conditionVectors.Length;
+            int columns = conditionVectors[0].Length;
+
+            for (int i = 0; i < rows; i++)
+            {
+                for (int j = 0; j < columns; j++)
+                {
+                    conditionVectors[i][j] /= _normalizationScale;
+                }
+            }
+        }
+
+        private void NormalizedConstraints(ConstraintObject[] constraintsObjects)
+        {
+            if (constraintsObjects.Length == 0) return;
+            
+            for (int i = 0; i < constraintsObjects.Length; i++)
+            {
+                constraintsObjects[i].ConstraintNumber /= _normalizationScale;
+            }
+        }
+
+        private double[][] TransposedMatrix(double[][] matrix)
+        {
+            if (matrix.Length == 0 || matrix[0].Length == 0) return new double[][] { };
             int rows = matrix.Length;
             int columns = matrix[0].Length;
             
-            int[][] transposedMatrix = new int[columns][];
+            double[][] transposedMatrix = new double[columns][];
             
             for (int i = 0; i < columns; i++)
             {
-                transposedMatrix[i] = new int[rows];
+                transposedMatrix[i] = new double[rows];
                 for (int j = 0; j < rows; j++)
                 {
                     transposedMatrix[i][j] = matrix[j][i];
@@ -49,15 +80,15 @@
             return transposedMatrix;
         }
 
-        public int[] GetFunctionVector()
+        public double[] GetFunctionVector()
         {
-            if (_conditionVectors.Length == 0) return new int[] { };
+            if (_conditionVectors.Length == 0) return new double[] { };
             return TransposedMatrix(_conditionVectors)[0];
         }
 
-        public int[][] GetConditionMatrix()
+        public double[][] GetConditionMatrix()
         {
-            if (_conditionVectors.Length == 0) return new int[][] { };
+            if (_conditionVectors.Length == 0) return new double[][] { };
             return TransposedMatrix(_conditionVectors)
                 .Skip(1)
                 .ToArray();
@@ -72,8 +103,8 @@
         
         public SimplexTableObject[][] GetFirstSimplexTable(bool isMaximize = true)
         {
-            int[][] matrix = GetConditionMatrix();
-            int[] functionVector = GetFunctionVector();
+            double[][] matrix = GetConditionMatrix();
+            double[] functionVector = GetFunctionVector();
             if (matrix.Length == 0 || functionVector.Length == 0 || _constraintsObjects.Length == 0) 
                 return new SimplexTableObject[][] { };
             
@@ -105,9 +136,9 @@
 
     public static class EquationDataPrinter
     {
-        public static void PrintConditionMatrix(MatrixPreprocessor preprocessor)
+        public static void PrintConditionMatrix(MatrixPreprocessor preprocessor, int normalizationScale)
         {
-            int[][] matrix = preprocessor.GetConditionMatrix();
+            double[][] matrix = preprocessor.GetConditionMatrix();
             ConstraintObject[] constraintsObjects = preprocessor.GetConstraintsObject();
             if (matrix.Length == 0 || constraintsObjects.Length == 0) return;
             
@@ -125,25 +156,25 @@
                 string[] vectorComponents = new string[columns];
                 for (int j = 0; j < columns; j++)
                 {
-                    vectorComponents[j] = $"{matrix[i][j]}X{j + 1}";
+                    vectorComponents[j] = $"{matrix[i][j] * normalizationScale}X{j + 1}";
                 }
                 ConstraintType constraintType = constraintsObjects[i].ConstraintType;
-                int constraintNumber = constraintsObjects[i].ConstraintNumber;
-                Console.WriteLine(string.Join(" + ", vectorComponents) + $" {constraintTypes[constraintType]} {constraintNumber}");
+                double constraintNumber = constraintsObjects[i].ConstraintNumber;
+                Console.WriteLine(string.Join(" + ", vectorComponents) + $" {constraintTypes[constraintType]} {constraintNumber * normalizationScale}");
             }
         }
         
 
-        public static void PrintFunctionVector(MatrixPreprocessor preprocessor)
+        public static void PrintFunctionVector(MatrixPreprocessor preprocessor, int normalizationScale)
         {
-            int[] functionVector = preprocessor.GetFunctionVector();
+            double[] functionVector = preprocessor.GetFunctionVector();
             if (functionVector.Length == 0) return;
             
             Console.Write("F: ");
             string[] functionComponents = new string[functionVector.Length];
             for (int i = 0; i < functionVector.Length; i++)
             {
-                functionComponents[i] = $"{functionVector[i]}X{i + 1}";
+                functionComponents[i] = $"{functionVector[i] * normalizationScale}X{i + 1}";
             }
             Console.WriteLine(string.Join(" + ", functionComponents));
         }
@@ -151,17 +182,19 @@
 
     public class SimplexProcessor
     {
-        private SimplexTableObject[][] _simplexTable;
+        private readonly SimplexTableObject[][] _simplexTable;
+        private readonly int _normalizationScale;
 
-        public SimplexProcessor(SimplexTableObject[][] simplexTable)
+        public SimplexProcessor(SimplexTableObject[][] simplexTable, int normalizationScale)
         {
             _simplexTable = simplexTable;
+            _normalizationScale = normalizationScale;
         }
 
         private int GetPivotColumnIndex(int rows, int columns)
         {
             int pivotColumn = -1;
-            double minValue = int.MaxValue;
+            double minValue = double.MaxValue;
 
             for (int i = 0; i < columns; i++)
             {
@@ -273,11 +306,15 @@
             {
                 for (int j = 0; j < columns; j++)
                 {
-                    Console.Write($"{_simplexTable[i][j].UpperBound, 2:F3}|{_simplexTable[i][j].LowerBound:F3} ");
+                    double upperBound = _simplexTable[i][j].UpperBound * _normalizationScale;
+                    double lowerBound = _simplexTable[i][j].LowerBound * _normalizationScale;
+                    Console.Write($"{upperBound, 2:F3}|{lowerBound:F3} ");
                 }
                 Console.WriteLine();
             }
         }
+
+        private double GetTargetFunctionValue(int rows, int columns) => _simplexTable[rows - 1][columns - 1].UpperBound;
 
         public void TransformationLoop()
         {
@@ -286,10 +323,17 @@
             int rows = _simplexTable.Length;
             int columns = _simplexTable[0].Length;
 
+            PrintSimplexTable(rows, columns);
+
             while (!IsOptimal(columns, rows))
             {
                 int pivotColumnIndex = GetPivotColumnIndex(rows, columns);
                 int pivotRowIndex = GetPivotRowIndex(pivotColumnIndex, rows, columns);
+                if (pivotRowIndex == -1)
+                {
+                    Console.WriteLine("No optimal solution found.");
+                    return;
+                }
                 
                 FillPivotLowerBounds(rows, columns);
                 FillTable(rows, columns, pivotColumnIndex, pivotRowIndex);
@@ -297,24 +341,17 @@
                 RecountTable(rows, columns);
                 PrintSimplexTable(rows, columns);
             }
-            /*
-            Console.WriteLine(IsOptimal(columns, rows));
-            Console.WriteLine(pivotColumnIndex);
-            Console.WriteLine(pivotRowIndex);
-            FillPivotLowerBounds(rows, columns);
-            FillTable(rows, columns, pivotColumnIndex, pivotRowIndex);
-            PivotReplacement(columns, pivotColumnIndex, pivotRowIndex);
-            RecountTable(rows, columns);
-            */
+            double optimalValue = GetTargetFunctionValue(rows, columns) * _normalizationScale;
+            Console.WriteLine($"\nOptimal F value: {optimalValue}");
         }
     }
 
     
     public static class Program
     {
-        public static int[][] CreateConditionVectors(int vectorCount, int variableCount)
+        public static double[][] CreateConditionVectors(int vectorCount, int variableCount)
         {
-            int[][] vectors = new int[vectorCount][];
+            double[][] vectors = new double[vectorCount][];
             for (int i = 0; i < vectorCount; i++)
             {
                 Console.Write($"P{i + 1}: ");
@@ -322,11 +359,11 @@
                 if (vectorComponents.Length != variableCount)
                 {
                     Console.WriteLine("vector is incorrect");
-                    return new int[][] {};
+                    return new double[][] {};
                 }
-                vectors[i] = vectorComponents  
+                vectors[i] = vectorComponents
                     .Select(element =>
-                        int.TryParse(element, out int condition) ? condition : 0)
+                        double.TryParse(element, out double condition) ? condition : 0)
                     .ToArray();
             }
             return vectors;
@@ -347,7 +384,7 @@
 
             for (int i = 0; i < constraintVector.Length; i++)
             {
-                if (int.TryParse(constraintVector[i], out int constraint))
+                if (double.TryParse(constraintVector[i], out double constraint))
                 {
                     Console.WriteLine($"Select constraint type for {constraintVector[i]}: \n 1.Equal, 2.LessOrEqual, 3.GreaterOrEqual");
                     ConstraintObject constraintObject = new ConstraintObject();
@@ -387,27 +424,38 @@
         
         public static void Main(string[] args)
         {
-            if (args.Length != 2) return;
-            if (int.TryParse(args[0], out int vectorCount) && int.TryParse(args[1], out int variableCount))
+            if (args.Length != 3) return;
+            if (int.TryParse(args[0], out int vectorCount) && int.TryParse(args[1], out int variableCount) && int.TryParse(args[2], out int normalizationScale))
             {
-                int[][] conditionVectors = CreateConditionVectors(vectorCount, variableCount);
-                ConstraintObject[] constraintsObjects = CreateConstraintsObjects(variableCount);
-                var preprocessor = new MatrixPreprocessor(conditionVectors, constraintsObjects);
-                var simplexProcessor = new SimplexProcessor(preprocessor.GetFirstSimplexTable());
+                if (vectorCount == variableCount)
+                {
+                    double[][] conditionVectors = CreateConditionVectors(vectorCount, variableCount);
+                    ConstraintObject[] constraintsObjects = CreateConstraintsObjects(variableCount);
+                    var preprocessor = new MatrixPreprocessor(conditionVectors, constraintsObjects, normalizationScale);
+                    var simplexProcessor = new SimplexProcessor(preprocessor.GetFirstSimplexTable(), normalizationScale);
 
-                Console.WriteLine();
-                Console.WriteLine("Function vector:");
-                EquationDataPrinter.PrintFunctionVector(preprocessor);
-                Console.WriteLine("Condition matrix:");
-                EquationDataPrinter.PrintConditionMatrix(preprocessor);
-                Console.WriteLine();
-                
-                simplexProcessor.TransformationLoop();
+                    Console.WriteLine();
+                    Console.WriteLine("Function vector:");
+                    EquationDataPrinter.PrintFunctionVector(preprocessor, normalizationScale);
+                    Console.WriteLine("Condition matrix:");
+                    EquationDataPrinter.PrintConditionMatrix(preprocessor, normalizationScale);
+                    Console.WriteLine();
+
+                    simplexProcessor.TransformationLoop();
+                }
+                else 
+                {
+                    Console.Error.WriteLine("Vector count should be equal to variable count");
+                }
+
             }
             else
             {
-                Console.WriteLine("Invalid input");
+                Console.Error.WriteLine("Invalid input");
             }
+
+            Console.Error.WriteLine("Press any key to exit...");
+            Console.ReadKey();
         }
     }
 }
