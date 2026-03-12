@@ -306,7 +306,9 @@
             {
                 for (int j = 0; j < columns; j++)
                 {
-                    Console.Write($"{_simplexTable[i][j].UpperBound, 2:F3}|{_simplexTable[i][j].LowerBound:F3} ");
+                    double upperBound = _simplexTable[i][j].UpperBound * _normalizationScale;
+                    double lowerBound = _simplexTable[i][j].LowerBound * _normalizationScale;
+                    Console.Write($"{upperBound, 2:F3}|{lowerBound:F3} ");
                 }
                 Console.WriteLine();
             }
