@@ -11,7 +11,7 @@
         public static async Task<List<string>> ReadFileAsync(string path)
         {
             if (!File.Exists(path))
-                throw new FileNotFoundException($"Файла по пути: {Path.GetFullPath(path)} не существует");
+                throw new FileNotFoundException($"File not exists by path: {Path.GetFullPath(path)}");
 
             List<string> lines = new List<string>();
             using (StreamReader streamReader = new StreamReader(path))
@@ -28,7 +28,7 @@
         public static double[][] GetConstraints(List<string> lines, char separator = ',')
         {
             if (lines.Count == 0)
-                throw new FormatException("Файл не содержит данных.");
+                throw new FormatException("The file contains no data");
 
             double[][] constraints = new double[lines.Count - 2][];
             for (int i = 0; i < lines.Count - 2; i++)
@@ -41,7 +41,7 @@
                     if (double.TryParse(constraintStrings[j], out double value))
                         constraintVector[j] = value;
                     else
-                        throw new FormatException($"Неккоректное значение в ячейке: {i}{j}");
+                        throw new FormatException($"Incorrect value in cell: {i}{j}");
                 }
                 constraints[i] = constraintVector;
             }
@@ -51,7 +51,7 @@
         public static double GetAdditionalVariable(List<string> lines)
         {
             if (lines.Count == 0)
-                throw new FormatException("Файл не содержит данных");
+                throw new FormatException("The file contains no data");
 
             Dictionary<string, double> constraintTypes = new Dictionary<string, double>()
             {
@@ -64,7 +64,7 @@
         public static double[] GetObjectiveFunction(List<string> lines, char separator=',')
         {
             if (lines.Count == 0)
-                throw new InvalidOperationException("Файл не содержит данных.");
+                throw new InvalidOperationException("The file contains no data");
 
             string[] objectiveFunction = lines[lines.Count - 2]
                 .Split(separator, StringSplitOptions.RemoveEmptyEntries);
@@ -75,7 +75,7 @@
                 if (double.TryParse(objectiveFunction[i], out double value))
                     objective[i] = value;
                 else
-                    throw new FormatException($"Некорректное значение: {i}");
+                    throw new FormatException($"Incorrect value: {i}");
             }
             return objective;
         }
@@ -220,7 +220,7 @@
 
         public void PrintCurrentSolution()
         {
-            Console.WriteLine("\n--- Базисные переменные ---");
+            Console.WriteLine("\n--- Basis variables ---");
             for (int i = 0; i < _rows - 1; i++)
             {
                 int varIndex = _basis[i];
@@ -229,13 +229,13 @@
             }
 
             double objectiveValue = _simplexTable[_objectiveRow][_cols - 1].UpperBound;
-            Console.WriteLine($"\nТекущее значение F = {objectiveValue:F4}");
+            Console.WriteLine($"\nCurrent value F = {objectiveValue:F4}");
         }
 
         public void Solve()
         {
             int iteration = 0;
-            Console.WriteLine("Начальная таблица:");
+            Console.WriteLine("Start table:");
             PrintTable();
             PrintCurrentSolution();
 
@@ -247,18 +247,18 @@
                 int pivotRow = GetPivotRow(pivotCol);
                 if (pivotRow == -1)
                 {
-                    Console.WriteLine("Задача не ограничена");
+                    Console.WriteLine("The task is not limited");
                     return;
                 }
 
                 Pivot(pivotRow, pivotCol);
                 iteration++;
-                Console.WriteLine($"\nИтерация {iteration}:");
-                Console.WriteLine($"Ведущая строка: {pivotRow}, ведущий столбец: {pivotCol}");
+                Console.WriteLine($"\nIteration {iteration}:");
+                Console.WriteLine($"Pivot row: {pivotRow}, pivot column: {pivotCol}");
                 PrintTable(pivotCol, pivotRow);
                 PrintCurrentSolution();
             }
-            Console.WriteLine("Текущее решение оптимально\nЗадача решена");
+            Console.WriteLine("Current solution is optimal\nProblem solved");
 
         }
     }
@@ -276,7 +276,7 @@
         }
         public static void PrintConstraints(double[][] constraints)
         {
-            Console.WriteLine("Ограничения");
+            Console.WriteLine("Constraints");
             foreach (var row in constraints)
             {
                 var leftConstraints = row[..^1]
@@ -297,7 +297,7 @@
                 double[] objective = DataLoader.GetObjectiveFunction(lines, ';');
                 double additionalVariable = DataLoader.GetAdditionalVariable(lines);
 
-                Console.WriteLine("-------------ЗАДАЧА ЛИНЕЙНОГО ПРОГРАММИРОВНИЯ--------------");
+                Console.WriteLine("-------------LINEAR PROGRAMMING SERVICE--------------");
                 PrintObjectiveFunction(objective);
                 PrintConstraints(constraints);
                 var solver = new SimplexProcessor(constraints, objective, additionalVariable);
@@ -305,7 +305,7 @@
             }
             else
             {
-                Console.WriteLine("Неверный формат аргументов командной строки");
+                Console.WriteLine("Command line argument is incorrect");
             }
         }
     }
