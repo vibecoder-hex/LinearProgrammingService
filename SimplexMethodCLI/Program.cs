@@ -39,13 +39,9 @@
                 for (int j = 0; j < constraintStrings.Length; j++)
                 {
                     if (double.TryParse(constraintStrings[j], out double value))
-                    {
                         constraintVector[j] = value;
-                    }
                     else
-                    {
                         throw new FormatException($"Неккоректное значение в ячейке: {i}{j}");
-                    }
                 }
                 constraints[i] = constraintVector;
             }
@@ -77,13 +73,9 @@
             for (int i = 0; i < objectiveFunction.Length; i++)
             {
                 if (double.TryParse(objectiveFunction[i], out double value))
-                {
                     objective[i] = value;
-                }
                 else
-                {
                     throw new FormatException($"Некорректное значение: {i}");
-                }
             }
             return objective;
         }
@@ -92,10 +84,10 @@
     public class SimplexProcessor
     {
         private readonly SimplexTableObject[][] _simplexTable;
-        private int _rows;
-        private int _cols;
-        private int _objectiveRow;
-        private int[] _basis;
+        private readonly int _rows;
+        private readonly int _cols;
+        private readonly int _objectiveRow;
+        private readonly int[] _basis;
 
         public SimplexProcessor(double[][] constraints, double[] objective, double additionalVariable)
         {
@@ -218,11 +210,9 @@
                 for (int j = 0; j < _cols; j++)
                 {
                     if (i == pivotRow && j == pivotCol)
-                    {
                         Console.Write($"{_simplexTable[i][j].UpperBound,7:F4}|{_simplexTable[i][j].LowerBound,7:F4}* ");
-                    } 
                     else
-                    Console.Write($" {_simplexTable[i][j].UpperBound,7:F4}|{_simplexTable[i][j].LowerBound,7:F4} ");
+                        Console.Write($" {_simplexTable[i][j].UpperBound,7:F4}|{_simplexTable[i][j].LowerBound,7:F4} ");
                 }
                 Console.WriteLine();
             }
