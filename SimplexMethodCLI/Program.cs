@@ -86,8 +86,6 @@ namespace SimplexMethodCLI
     public class SimplexProcessor
     {
         private readonly SimplexTableObject[][] _simplexTable;
-        private readonly int _constraintRows;
-        private readonly int _constraintCols;
         private readonly int _tableRows;
         private readonly int _tableCols;
         private readonly int _objectiveRow;
@@ -97,37 +95,37 @@ namespace SimplexMethodCLI
 
         public SimplexProcessor(double[][] constraints, double[] objective, double additionalVariable)
         {
-            _constraintRows = constraints.Length;
-            _constraintCols = constraints[0].Length - 1;
+            int constraintRows = constraints.Length;
+            int constraintCols = constraints[0].Length - 1;
             
             _originalVars = constraints[0].Length - 1;
             _slackVars = constraints.Length;
 
-            _simplexTable = new SimplexTableObject[_constraintRows + 1][];
-            for (int i = 0; i <= _constraintRows; i++)
-                _simplexTable[i] = new SimplexTableObject[_constraintCols + _constraintRows + 1];
+            _simplexTable = new SimplexTableObject[constraintRows + 1][];
+            for (int i = 0; i <= constraintRows; i++)
+                _simplexTable[i] = new SimplexTableObject[constraintRows + constraintRows + 1];
 
-            for (int i = 0; i < _constraintRows; i++)
+            for (int i = 0; i < constraintRows; i++)
             {
-                for (int j = 0; j < _constraintCols; j++)
+                for (int j = 0; j < constraintRows; j++)
                     _simplexTable[i][j].UpperBound = constraints[i][j];
                     
 
-                for (int j = 0; j < _constraintRows; j++)
-                    _simplexTable[i][_constraintCols + j].UpperBound = (i == j) ? additionalVariable : 0.0;
+                for (int j = 0; j < constraintRows; j++)
+                    _simplexTable[i][constraintRows + j].UpperBound = (i == j) ? additionalVariable : 0.0;
 
-                _simplexTable[i][_constraintCols + _constraintRows].UpperBound = constraints[i][_constraintCols];
+                _simplexTable[i][constraintRows + constraintRows].UpperBound = constraints[i][constraintRows];
             }
 
-            _objectiveRow = _constraintRows;
+            _objectiveRow = constraintRows;
 
-            for (int j = 0; j < _constraintCols; j++)
+            for (int j = 0; j < constraintRows; j++)
                 _simplexTable[_objectiveRow][j].UpperBound = -objective[j];
 
-            for (int j = 0; j < _constraintRows; j++)
-                _simplexTable[_objectiveRow][_constraintCols + j].UpperBound = 0.0;
+            for (int j = 0; j < constraintRows; j++)
+                _simplexTable[_objectiveRow][constraintRows + j].UpperBound = 0.0;
             
-            _simplexTable[_objectiveRow][_constraintCols + _constraintRows].UpperBound = 0.0;
+            _simplexTable[_objectiveRow][constraintRows + constraintRows].UpperBound = 0.0;
 
             _tableRows = _simplexTable.Length;
             _tableCols = _simplexTable[0].Length;
