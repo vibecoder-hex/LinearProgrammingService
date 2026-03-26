@@ -1,4 +1,6 @@
-﻿namespace SimplexMethodCLI
+﻿using System.Globalization;
+
+namespace SimplexMethodCLI
 {
     public struct SimplexTableObject
     {
@@ -38,7 +40,7 @@
 
                 for (int j = 0; j < constraintStrings.Length; j++)
                 {
-                    if (double.TryParse(constraintStrings[j], out double value))
+                    if (double.TryParse(constraintStrings[j], CultureInfo.InvariantCulture, out double value))
                         constraintVector[j] = value;
                     else
                         throw new FormatException($"Incorrect value in cell: {i}{j}");
@@ -72,7 +74,7 @@
             double[] objective = new double[objectiveFunction.Length];
             for (int i = 0; i < objectiveFunction.Length; i++)
             {
-                if (double.TryParse(objectiveFunction[i], out double value))
+                if (double.TryParse(objectiveFunction[i], CultureInfo.InvariantCulture, out double value))
                     objective[i] = value;
                 else
                     throw new FormatException($"Incorrect value: {i}");
@@ -88,11 +90,16 @@
         private readonly int _cols;
         private readonly int _objectiveRow;
         private readonly int[] _basis;
+        private readonly int _originalVars;
+        private readonly int _slackVars;
 
         public SimplexProcessor(double[][] constraints, double[] objective, double additionalVariable)
         {
             _rows = constraints.Length;
             _cols = constraints[0].Length - 1;
+            
+            _originalVars = constraints[0].Length - 1;
+            _slackVars = constraints.Length;
 
             _simplexTable = new SimplexTableObject[_rows + 1][];
             for (int i = 0; i <= _rows; i++)
@@ -113,14 +120,11 @@
             _objectiveRow = _rows;
 
             for (int j = 0; j < _cols; j++)
-            {
                 _simplexTable[_objectiveRow][j].UpperBound = -objective[j];
-            }
 
             for (int j = 0; j < _rows; j++)
-            {
                 _simplexTable[_objectiveRow][_cols + j].UpperBound = 0.0;
-            }
+            
             _simplexTable[_objectiveRow][_cols + _rows].UpperBound = 0.0;
 
             _rows = _simplexTable.Length;
@@ -205,14 +209,34 @@
         public void PrintTable(int pivotCol = -1, int pivotRow = -1)
         {
             Console.WriteLine();
+            Console.Write("\"Basis\"");
+            
+            for (int x = 1; x < _originalVars; x++)
+                Console.Write($"\"x{x}\";");
+            for (int s = 1; s < _slackVars; s++)
+                Console.Write($"\"s{s}\";");
+            Console.Write($"\"Solution\";");
+            Console.WriteLine();
             for (int i = 0; i < _rows; i++)
             {
+                if (i < _rows - 1)
+                {
+                    int basisVarIndex = _basis[i];
+                    if (basisVarIndex < _originalVars)
+                        Console.Write($"\"x{basisVarIndex}\";");
+                    else
+                        Console.Write($"\"s{basisVarIndex - _originalVars + 1}\"");
+                }
+                else
+                    Console.Write("\"Z\";");
+                
                 for (int j = 0; j < _cols; j++)
                 {
+                    double value = _simplexTable[i][j].UpperBound;
                     if (i == pivotRow && j == pivotCol)
-                        Console.Write($"{_simplexTable[i][j].UpperBound,7:F4}|{_simplexTable[i][j].LowerBound,7:F4}* ");
+                        Console.Write($"{value,7:F4}*;");
                     else
-                        Console.Write($" {_simplexTable[i][j].UpperBound,7:F4}|{_simplexTable[i][j].LowerBound,7:F4} ");
+                        Console.Write($"{value,7:F4};");
                 }
                 Console.WriteLine();
             }
@@ -225,7 +249,10 @@
             {
                 int varIndex = _basis[i];
                 double value = _simplexTable[i][_cols - 1].UpperBound;
-                Console.WriteLine($"x{varIndex + 1} = {value:F4}");
+                if (varIndex < _originalVars)
+                    Console.WriteLine($"x{varIndex + 1} = {value:F4}");
+                else
+                    Console.WriteLine($"s{varIndex - _originalVars + 1} = {value:F4}");
             }
 
             double objectiveValue = _simplexTable[_objectiveRow][_cols - 1].UpperBound;
@@ -288,13 +315,14 @@
 
         public static async Task Main(string[] args)
         {
-            if (args.Length == 1)
+            if (args.Length == 2)
             {
                 string path = args[0];
+                char separator = char.Parse(args[1]);
                 List<string> lines = await DataLoader.ReadFileAsync(path);
 
-                double[][] constraints = DataLoader.GetConstraints(lines, ';');
-                double[] objective = DataLoader.GetObjectiveFunction(lines, ';');
+                double[][] constraints = DataLoader.GetConstraints(lines, separator);
+                double[] objective = DataLoader.GetObjectiveFunction(lines, separator);
                 double additionalVariable = DataLoader.GetAdditionalVariable(lines);
 
                 Console.WriteLine("-------------LINEAR PROGRAMMING SERVICE--------------");

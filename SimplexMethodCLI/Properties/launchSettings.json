@@ -2,7 +2,7 @@
   "profiles": {
     "SimplexMethodCLI": {
       "commandName": "Project",
-      "commandLineArgs": "task_data.csv"
+      "commandLineArgs": "task_data.csv ;"
     }
   }
 }
