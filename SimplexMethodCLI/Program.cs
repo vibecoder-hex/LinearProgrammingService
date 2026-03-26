@@ -86,60 +86,62 @@ namespace SimplexMethodCLI
     public class SimplexProcessor
     {
         private readonly SimplexTableObject[][] _simplexTable;
-        private readonly int _rows;
-        private readonly int _cols;
+        private readonly int _constraintRows;
+        private readonly int _constraintCols;
+        private readonly int _tableRows;
+        private readonly int _tableCols;
         private readonly int _objectiveRow;
-        private readonly int[] _basis;
+        private readonly int[] _basisVarIndexes;
         private readonly int _originalVars;
         private readonly int _slackVars;
 
         public SimplexProcessor(double[][] constraints, double[] objective, double additionalVariable)
         {
-            _rows = constraints.Length;
-            _cols = constraints[0].Length - 1;
+            _constraintRows = constraints.Length;
+            _constraintCols = constraints[0].Length - 1;
             
             _originalVars = constraints[0].Length - 1;
             _slackVars = constraints.Length;
 
-            _simplexTable = new SimplexTableObject[_rows + 1][];
-            for (int i = 0; i <= _rows; i++)
-                _simplexTable[i] = new SimplexTableObject[_cols + _rows + 1];
+            _simplexTable = new SimplexTableObject[_constraintRows + 1][];
+            for (int i = 0; i <= _constraintRows; i++)
+                _simplexTable[i] = new SimplexTableObject[_constraintCols + _constraintRows + 1];
 
-            for (int i = 0; i < _rows; i++)
+            for (int i = 0; i < _constraintRows; i++)
             {
-                for (int j = 0; j < _cols; j++)
+                for (int j = 0; j < _constraintCols; j++)
                     _simplexTable[i][j].UpperBound = constraints[i][j];
                     
 
-                for (int j = 0; j < _rows; j++)
-                    _simplexTable[i][_cols + j].UpperBound = (i == j) ? additionalVariable : 0.0;
+                for (int j = 0; j < _constraintRows; j++)
+                    _simplexTable[i][_constraintCols + j].UpperBound = (i == j) ? additionalVariable : 0.0;
 
-                _simplexTable[i][_cols + _rows].UpperBound = constraints[i][_cols];
+                _simplexTable[i][_constraintCols + _constraintRows].UpperBound = constraints[i][_constraintCols];
             }
 
-            _objectiveRow = _rows;
+            _objectiveRow = _constraintRows;
 
-            for (int j = 0; j < _cols; j++)
+            for (int j = 0; j < _constraintCols; j++)
                 _simplexTable[_objectiveRow][j].UpperBound = -objective[j];
 
-            for (int j = 0; j < _rows; j++)
-                _simplexTable[_objectiveRow][_cols + j].UpperBound = 0.0;
+            for (int j = 0; j < _constraintRows; j++)
+                _simplexTable[_objectiveRow][_constraintCols + j].UpperBound = 0.0;
             
-            _simplexTable[_objectiveRow][_cols + _rows].UpperBound = 0.0;
+            _simplexTable[_objectiveRow][_constraintCols + _constraintRows].UpperBound = 0.0;
 
-            _rows = _simplexTable.Length;
-            _cols = _simplexTable[0].Length;
-
-            _basis = new int[_rows - 1];
-            for (int i = 0; i < _rows - 1; i++)
-                _basis[i] = _cols - _rows + i; 
+            _tableRows = _simplexTable.Length;
+            _tableCols = _simplexTable[0].Length;
+            
+            _basisVarIndexes = new int[_tableRows - 1];
+            for (int i = 0; i < _tableRows - 1; i++)
+                _basisVarIndexes[i] = _tableCols - _tableRows + i; 
         }
 
         private int GetPivotColumn()
         {
             int col = -1;
             double minVal = 0.0;
-            for (int j = 0; j < _cols - 1; j++)
+            for (int j = 0; j < _tableCols - 1; j++)
             {
                 if (_simplexTable[_objectiveRow][j].UpperBound < minVal)
                 {
@@ -154,11 +156,11 @@ namespace SimplexMethodCLI
         {
             int row = -1;
             double minRatio = double.MaxValue;
-            for (int i = 0; i < _rows - 1; i++)
+            for (int i = 0; i < _tableRows - 1; i++)
             {
                 if (_simplexTable[i][pivotCol].UpperBound > 0)
                 {
-                    double ratio = _simplexTable[i][_cols - 1].UpperBound / _simplexTable[i][pivotCol].UpperBound;
+                    double ratio = _simplexTable[i][_tableCols - 1].UpperBound / _simplexTable[i][pivotCol].UpperBound;
                     if (ratio < minRatio)
                     {
                         minRatio = ratio;
@@ -168,39 +170,39 @@ namespace SimplexMethodCLI
             }
             return row;
         }
-
-        private void SaveLowerBounds()
-        {
-            for (int i = 0; i < _rows; i++)
-                for (int j = 0; j < _cols; j++)
-                    _simplexTable[i][j].LowerBound = _simplexTable[i][j].UpperBound;
-        }
+        
 
         private void Pivot(int pivotRow, int pivotCol)
         {
-            SaveLowerBounds();
-
+            for (int i = 0; i < _tableRows; i++)
+            {
+                for (int j = 0; j < _tableCols; j++)
+                {
+                    _simplexTable[i][j].LowerBound = _simplexTable[i][j].UpperBound;
+                }
+            }
+            
             double pivotVal = _simplexTable[pivotRow][pivotCol].UpperBound;
 
-            for (int j = 0; j < _cols; j++)
+            for (int j = 0; j < _tableCols; j++)
                 _simplexTable[pivotRow][j].UpperBound /= pivotVal;
 
-            for (int i = 0; i < _rows; i++)
+            for (int i = 0; i < _tableRows; i++)
             {
                 if (i == pivotRow) continue;
                 double factor = _simplexTable[i][pivotCol].LowerBound;
-                for (int j = 0; j < _cols; j++)
+                for (int j = 0; j < _tableCols; j++)
                 {
                     _simplexTable[i][j].UpperBound -= factor * _simplexTable[pivotRow][j].UpperBound;
                 }
             }
 
-            _basis[pivotRow] = pivotCol;
+            _basisVarIndexes[pivotRow] = pivotCol;
         }
 
         private bool IsOptimal()
         {
-            for (int j = 0; j < _cols - 1; j++)
+            for (int j = 0; j < _tableCols - 1; j++)
                 if (_simplexTable[_objectiveRow][j].UpperBound < 0)
                     return false;
             return true;
@@ -215,13 +217,14 @@ namespace SimplexMethodCLI
                 Console.Write($"\"x{x}\";");
             for (int s = 1; s < _slackVars; s++)
                 Console.Write($"\"s{s}\";");
+            
             Console.Write($"\"Solution\";");
             Console.WriteLine();
-            for (int i = 0; i < _rows; i++)
+            for (int i = 0; i < _tableRows; i++)
             {
-                if (i < _rows - 1)
+                if (i < _tableRows - 1)
                 {
-                    int basisVarIndex = _basis[i];
+                    int basisVarIndex = _basisVarIndexes[i];
                     if (basisVarIndex < _originalVars)
                         Console.Write($"\"x{basisVarIndex}\";");
                     else
@@ -230,7 +233,7 @@ namespace SimplexMethodCLI
                 else
                     Console.Write("\"Z\";");
                 
-                for (int j = 0; j < _cols; j++)
+                for (int j = 0; j < _tableCols; j++)
                 {
                     double value = _simplexTable[i][j].UpperBound;
                     if (i == pivotRow && j == pivotCol)
@@ -245,17 +248,17 @@ namespace SimplexMethodCLI
         public void PrintCurrentSolution()
         {
             Console.WriteLine("\n--- Basis variables ---");
-            for (int i = 0; i < _rows - 1; i++)
+            for (int i = 0; i < _tableRows- 1; i++)
             {
-                int varIndex = _basis[i];
-                double value = _simplexTable[i][_cols - 1].UpperBound;
+                int varIndex = _basisVarIndexes[i];
+                double value = _simplexTable[i][_tableCols - 1].UpperBound;
                 if (varIndex < _originalVars)
                     Console.WriteLine($"x{varIndex + 1} = {value:F4}");
                 else
                     Console.WriteLine($"s{varIndex - _originalVars + 1} = {value:F4}");
             }
 
-            double objectiveValue = _simplexTable[_objectiveRow][_cols - 1].UpperBound;
+            double objectiveValue = _simplexTable[_objectiveRow][_tableCols - 1].UpperBound;
             Console.WriteLine($"\nCurrent value F = {objectiveValue:F4}");
         }
 
